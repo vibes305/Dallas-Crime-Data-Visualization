@@ -1,0 +1,693 @@
+---
+title: "Data Visualization"
+author: "NAYAK, VAIBHAV"
+subtitle: "Analysis of a policing dataset from Dallas, Texas in 2016"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE,fig.align='center'}
+### Don't delete this setup code chunk from your file
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE,
+	comment = NULL
+)
+  
+
+#load all the packages required for analyses:
+#====================================================================================
+#To load dplyr package
+library(readr)
+library(plyr)
+library(dplyr) 
+library(plotly)
+library(lubridate)
+library(ggplot2)
+```
+
+<span style="color:red;">
+
+```{=html}
+<style>
+body {
+text-align:justify;
+}
+</style>
+```
+## 1. INTRODUCTION
+
+This study examines the policing dataset from Dallas, Texas in 2016 using the Center for Policing Equality's research methodology. The goal of this study is to thoroughly examine the police data from Dallas, Texas in 2016 and pinpoint areas where racial disparities persist that are not explained by crime and poverty levels. This report analyses a data set, which has Crime incident cases in Dallas. The dataset has 2383 observations with 47 variables. The report aims to find insights that are hidden, by using visualizations methodology. Step1 is Data cleaning Step2 is  Data conversion into right format step3 is Data exploration step4 is drawing plots step5 is analysing the plots and making notes of different insights gained from plots step6 Analysing all the plots and trying to tell a brief story in conclusion.
+
+
+
+## 2. METHODOLOGY
+
+To achieve the Analysis objectives following methods are followed:
+
+### 2.1 Load and Clean the Data
+
+Data set is being imported into R using read_csv, which automatically identifies missing values and names it as NA.
+As there are two headers removing the second header,will reduce confusion with calling it during analysis.
+Next, Checking for duplicates in data set using duplicated() function. As there are no duplicates found,it says that every row is unique. Later checking for missing values using colSums(is.na()), Where colSums gives sum of missing values for each column using is.na().
+
+```{r,fig.align='center'}
+#load the data
+mydata <- read_csv("37-00049_UOF-P_2016_prepped.csv")
+#Removing second header
+Dallas_crimes <- mydata[-1,]
+#Checking for duplicates
+dup_sum <- duplicated(Dallas_crimes)
+sum(dup_sum==TRUE)
+#Cheking for missing values
+na_data <- colSums(is.na(Dallas_crimes))
+
+#replacing all null values and unknown as other
+Dallas_crimes <- Dallas_crimes %>% replace(.=="NULL", "Other")
+Dallas_crimes <- Dallas_crimes %>% replace(.=="Unknown", "Other")
+
+```
+
+While checking for missing value , it can be noticed that column "TYPE_OF_FORCE_USED9"  "TYPE_OF_FORCE_USED10" has 2382 NA values. Which means it has only one value. Removing both columns,to simplify data and reduce noise.
+```{r}
+#Cheking for missing values
+na_data <- colSums(is.na(Dallas_crimes))
+# Find the maximum number of NA values
+max_na <- max(na_data)
+# Filter columns with the maximum number of NA values
+columns_with_max_na <- names(na_data[na_data == max_na])
+columns_with_max_na
+max_na
+Dallas_crimes <- Dallas_crimes[,-c(44,45)]
+```
+
+
+
+
+### 2.2 Data exploration and Data type convertion 
+
+As the Column Incident_date and Incident_time are not in proper date/time format.Converting them into right Date/time format.
+
+Factorizing the columns to effectively analyse the data based on their respective levels.
+Firstly, converting all the officer related columns
+
+```{r}
+#OFFICER_DETAILS
+Dallas_crimes$OFFICER_ID <- as.numeric(Dallas_crimes$OFFICER_ID)
+#Factorize officer gender
+Dallas_crimes$OFFICER_GENDER <- as.factor(Dallas_crimes$OFFICER_GENDER)
+#Factorize officer race
+Dallas_crimes$OFFICER_RACE <- as.factor(Dallas_crimes$OFFICER_RACE)
+#Factorize OFFICER_YEARS_ON_FORCE into numeric data
+Dallas_crimes$OFFICER_YEARS_ON_FORCE <- as.numeric(Dallas_crimes$OFFICER_YEARS_ON_FORCE)
+#Factorize OFFICER_INJURY
+Dallas_crimes$OFFICER_INJURY <- as.factor(Dallas_crimes$OFFICER_INJURY)
+#Factorize OFFICER_INJURY_TYPE
+Dallas_crimes$OFFICER_INJURY_TYPE <- as.factor(Dallas_crimes$OFFICER_INJURY_TYPE)
+#Factorize OFFICER_HOSPITALIZATION
+Dallas_crimes$OFFICER_HOSPITALIZATION<- as.factor(Dallas_crimes$OFFICER_HOSPITALIZATION)
+```
+
+Secondly, converting all the Subject related columns
+
+```{r}
+#SUBJECT_DETAILS
+#Convert subject_id into numeric data
+Dallas_crimes$SUBJECT_ID <- as.numeric(Dallas_crimes$SUBJECT_ID)
+#Factorize subject_Race 
+Dallas_crimes$SUBJECT_RACE <- as.factor(Dallas_crimes$SUBJECT_RACE)
+#Factorize subject_GENDER 
+Dallas_crimes$SUBJECT_GENDER <- as.factor(Dallas_crimes$SUBJECT_GENDER)
+#Factorize subject_INJURY 
+Dallas_crimes$SUBJECT_INJURY <- as.factor(Dallas_crimes$SUBJECT_INJURY)
+#Factorize SUBJECT_INJURY_TYPE
+Dallas_crimes$SUBJECT_INJURY_TYPE <- as.factor(Dallas_crimes$SUBJECT_INJURY_TYPE)
+#Factorize SUBJECT_WAS_ARRESTED
+Dallas_crimes$SUBJECT_WAS_ARRESTED <- as.factor(Dallas_crimes$SUBJECT_WAS_ARRESTED)
+#Factorize SUBJECT_OFFENSE 
+#Totally 551 types of offense are commited
+Dallas_crimes$SUBJECT_OFFENSE <- as.factor(Dallas_crimes$SUBJECT_OFFENSE)
+#Factorize SUBJECT_DESCRIPTION 
+#Totally 14 types of Subject condition
+Dallas_crimes$SUBJECT_DESCRIPTION <- as.factor(Dallas_crimes$SUBJECT_DESCRIPTION)
+
+```
+
+Later, Factorizing all the Reasons and Forces
+
+```{r}
+# Incident reason
+Dallas_crimes$INCIDENT_REASON<- as.factor(Dallas_crimes$INCIDENT_REASON)
+Dallas_crimes$REASON_FOR_FORCE<- as.factor(Dallas_crimes$REASON_FOR_FORCE)
+Dallas_crimes$TYPE_OF_FORCE_USED1<- as.factor(Dallas_crimes$TYPE_OF_FORCE_USED1)
+Dallas_crimes$TYPE_OF_FORCE_USED2<- as.factor(Dallas_crimes$TYPE_OF_FORCE_USED2)
+Dallas_crimes$TYPE_OF_FORCE_USED3<- as.factor(Dallas_crimes$TYPE_OF_FORCE_USED3)
+Dallas_crimes$TYPE_OF_FORCE_USED4<- as.factor(Dallas_crimes$TYPE_OF_FORCE_USED4)
+Dallas_crimes$TYPE_OF_FORCE_USED5<- as.factor(Dallas_crimes$TYPE_OF_FORCE_USED5)
+Dallas_crimes$TYPE_OF_FORCE_USED6<- as.factor(Dallas_crimes$TYPE_OF_FORCE_USED6)
+Dallas_crimes$TYPE_OF_FORCE_USED7<- as.factor(Dallas_crimes$TYPE_OF_FORCE_USED7)
+Dallas_crimes$TYPE_OF_FORCE_USED8<- as.factor(Dallas_crimes$TYPE_OF_FORCE_USED8)
+#converting NUMBER_CYCLES into numeric data
+Dallas_crimes$NUMBER_EC_CYCLES <- as.numeric(Dallas_crimes$NUMBER_EC_CYCLES)
+#Num_null <- na.omit(Dallas_crimes$NUMBER_EC_CYCLES) 
+```
+
+Finally, Factorizing all the Location Details
+
+```{r}
+#Location
+#Factorize DIVISION
+Dallas_crimes$DIVISION <- as.factor(Dallas_crimes$DIVISION)
+#Factorize DISTRICT
+Dallas_crimes$LOCATION_DISTRICT<- as.factor(Dallas_crimes$LOCATION_DISTRICT)
+#converting LATITUDE into numeric data
+Dallas_crimes$LOCATION_LATITUDE<- as.numeric(Dallas_crimes$LOCATION_LATITUDE)
+#converting LONGITUDE into numeric data
+Dallas_crimes$LOCATION_LONGITUDE<- as.numeric(Dallas_crimes$LOCATION_LONGITUDE)
+```
+
+Also Incident date and time must be explored and converted as shown below
+```{r}
+#Converting the data as per requirements
+#Convert INCIDENT_DATE from char to date format
+Dallas_crimes$INCIDENT_DATE <- as.Date(Dallas_crimes$INCIDENT_DATE, format = "%m/%d/%y")
+#Converts time in string format into time 
+Dallas_crimes$INCIDENT_TIME <- format(strptime(Dallas_crimes$INCIDENT_TIME, "%I:%M:%S %p"), "%H:%M:%S")
+#Creating a new column Col_month_string to store only month in string
+Dallas_crimes$Col_month_string <- months(as.Date(Dallas_crimes$INCIDENT_DATE))
+#Creating a new column Col_month_digit_digit to store only month in digit
+Dallas_crimes$Col_month_digit <- format(Dallas_crimes$INCIDENT_DATE,"%m")
+
+Dallas_crimes$Col_hour <- as.numeric(substr(Dallas_crimes$INCIDENT_TIME, 0, 2))
+
+Dallas_crimes$Col_day <- wday(Dallas_crimes$INCIDENT_DATE)
+
+Dallas_crimes$Col_hour <- substr(Dallas_crimes$INCIDENT_TIME, 0, 2)
+
+Dallas_crimes$Col_date <- substr(Dallas_crimes$INCIDENT_DATE, 9, 10)
+
+
+## Create group of datas:
+
+Dallas_year <-  Dallas_crimes %>% group_by(INCIDENT_DATE,Col_month_string,Col_day)%>%summarize(count=n())
+
+Dallas_month <-  Dallas_crimes %>% group_by(Col_month_digit) %>%
+  summarize(count = n())
+
+Dallas_day <-  Dallas_crimes %>% filter(!is.na(Col_hour))%>%
+  group_by(Col_day,Col_hour) %>%
+  summarize(count = n())
+
+Dallas_hour <- Dallas_crimes %>% group_by(Col_hour) %>%
+  summarize(avg = n()) 
+```
+
+
+
+
+## 3. Visual Representation using basic plots
+
+### 3.1 Visulizing using table
+
+Here aim is to find top 5 offenses by subject and top 5 report area, where offense was committed.
+table() function helps to create a table for variable Subject_OFFENSE, sort() function sorts frequency in decreasing order as decreasing is equal to TRUE.Caption helps to give tittle to the table. col.names used to give names to columns.[1:5] selects top 5 rows from sorted table. knitr::kable() function used to create a formatted table with sorted data.
+Similarly, table for top 5 Report areas done.
+
+```{r fig.height=4, fig.width=4, warning=FALSE}
+d = sort(table(Dallas_crimes$SUBJECT_OFFENSE), decreasing = TRUE)[1:5]
+knitr::kable(d, caption = "Table 1 Top 5 offences", col.names = c("Offence",
+                           "Frequency"))
+Report = sort(table(Dallas_crimes$REPORTING_AREA), decreasing = TRUE)[1:5]
+knitr::kable(Report, caption = "Table 2 Top 5 Report Area", col.names = c("Report Area",
+                           "Frequency"))
+```
+
+
+As shown in Table 1, The offense "APOWW" has the highest frequency of 351, indicating it is the most commonly occurring offense in the City Dallas."No Arrest is the second most frequent offense with a frequency of 305, suggesting there where incidents where no arrest was made."Public Intoxication" is the third most frequent offense with a frequency of 181, indicating a significant number of incidents involving public intoxication."Warrant/Hold" and Assault/FV" are the fourth and fifth most frequent offenses with frequencies of 110 and 92 respectively, indicating relatively lower occurrences compared to the top 3 offenses.
+
+As shown in Table 2, The report are 2061 and 8822 have the highest frequency of offenses with 30 occurrences each. Report areas 2049,2403, and 2088 have slightly lower frequencies of offenses with 26,25, and 23 occurrences respectively.These report areas may be potential hotspots or areas where offenses are more frequently reported, and further analysis may be needed to understand the reasons behind the higher frequency of offenses in these areas.
+
+
+
+### 3.2 Visulizing using Bar plot / Pie chart 
+
+#### 3.2.1 Visulizing using Bar plot
+
+Firstly, removing "NA" values using function na.omit() from SUBJECT_GENDER.Gender is stored as data frame. Later using table() function to find total value for each. prop.table() is used to find percentage of proportion of each unique value.
+```{r}
+#Bar plot to determine percentage of Subject w.r.t gender
+filtered_data <- na.omit(Dallas_crimes$SUBJECT_GENDER)
+qual.data <-data.frame(Dallas_crimes$SUBJECT_GENDER)
+table ( qual.data )
+prop.table(table ( qual.data ))*100 #in percentages
+
+barplot ( table ( qual.data ), xlab =" Subject gender ",
+          ylab =" Frequency ")
+```
+
+
+As shown in above plot, it can been seen that the majority of subjects are male(81.07%),followed by female(18.46%),and other(0.46%).This shows that males commit more crimes in Dallas than females, which is a considerable gender gap.
+
+#### 3.2.2 Visulizing of Subject Race using Bar plot
+
+```{r}
+#Bar Plot
+ Dallas_crimes %>%
+group_by(SUBJECT_RACE) %>%
+filter(!is.na(SUBJECT_RACE)) %>%
+summarise(count = n()) %>%
+mutate(Sum_Crime = nrow(Dallas_crimes)) %>%
+mutate(percentage = (count/Sum_Crime) * 100) %>%
+arrange(desc(count)) %>%
+ungroup() %>%
+mutate(SUBJECT_RACE = reorder(SUBJECT_RACE,count)) %>%
+ggplot(aes(x = SUBJECT_RACE,y = percentage)) +
+geom_bar(stat='identity',colour="white", fill = "orange") +
+geom_text(aes(x = SUBJECT_RACE, y = 1, label = paste0("(",round(percentage,2)," % )",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+labs(x = 'Race', y = 'Percentage', title = 'Race Percentage in Crimes') +
+  coord_flip() + theme_bw()
+```
+
+
+As shown in above plot, Black individuals have the highest percentage(55.9%) of offenses committed among the races listed.Hispanic individuals have the second highest percentage(22%) of offenses committed. White individuals have a lower percentage(19.7%) of offenses committed compared to Black and Hispanic individuals.Other races,including Asian and American Indian have much lower percentages(ranging from 0.04% to 2.1%) of offenses committed.The figure offers a clear visual picture of the differences in offence percentages between various racial groups. Nevertheless, it is crucial to remember that crime and offence rates can be affected by a variety of factors, including social, economic, and institutional problems. Caution should be exercised when interpreting such data to prevent the spread of prejudgments.
+
+#### 3.2.3 Visulizing of Injury using Bar plot1
+
+
+Now lets generate two bar plots using the ggplot2 package in R to visualize the relationship between officer gender and officer or subject injury in the context of Dallas crimes data.The first plot, titled "What officer gender is more likely to be injured?", shows the proportion of officer injuries by gender using a stacked bar chart. The OFFICER_INJURY variable is mapped to the fill aesthetic, and custom colors (e.g., orange and blue) are used to represent the different categories of officer injury. The y-axis is scaled to percentages using scale_y_continuous() and the labels are formatted accordingly.
+The second plot, titled "What officer gender is more likely to injure the subject?", shows the proportion of subject injuries by officer gender using another stacked bar chart. The SUBJECT_INJURY variable is mapped to the fill aesthetic, and custom colors (e.g., dark orange and teal) are used to represent the different categories of subject injury. Similar to the first plot, the y-axis is scaled to percentages and labels are formatted accordingly.
+
+Finally, the grid.arrange() function is used to arrange the two plots side by side in a grid with one row and two columns for easy visual comparison.
+
+```{r}
+library(gridExtra)
+
+# Define custom colors
+officer_injury_colors <- c("#E69F00", "#56B4E9")  # Custom colors for Officer Injury (e.g., orange and blue)
+subject_injury_colors <-c("#E69F00", "#56B4E9") # Custom colors for Subject Injury (e.g., dark orange and teal)
+
+# Plot 1: Officer Gender and Officer Injury
+q1 <- ggplot(Dallas_crimes, aes(x = OFFICER_GENDER, y = 10, fill = OFFICER_INJURY)) + 
+  geom_bar(stat = "identity", position = "fill") + 
+  scale_y_continuous(labels = scales::percent) +
+  xlab("Officer gender") + ylab("Proportion") +
+  guides(fill = guide_legend(title = "Officer injury")) +
+  ggtitle("Officer gender injured") +
+  scale_fill_manual(values = officer_injury_colors)  # Use custom colors
+
+# Plot 2: Officer Gender and Subject Injury
+q2 <- ggplot(Dallas_crimes, aes(x = OFFICER_GENDER, y = 10, fill = SUBJECT_INJURY)) + 
+  geom_bar(stat = "identity", position = "fill") + 
+  scale_y_continuous(labels = scales::percent) +
+  xlab("Officer gender") + ylab("Proportion") +
+  guides(fill = guide_legend(title = "Subject injury")) +
+  ggtitle("Subject gender injured") +
+  scale_fill_manual(values = subject_injury_colors)  # Use custom colors
+
+# Arrange the plots in a grid
+grid.arrange(q1, q2, ncol = 2, nrow = 1)
+
+```
+
+
+For officer injuries, the first plot shows that a higher proportion of females (represented by the orange color) have gotten injured compared to males (represented by the blue color). This suggests that female officers may be more likely to experience injuries compared to male officers.On the other hand, for subject injuries, the second plot shows that a higher proportion of males (represented by the dark orange color) have gotten injured compared to females (represented by the teal color). This suggests that male subjects may be more likely to sustain injuries in interactions with officers compared to female subjects.
+
+#### 3.2.4 Visulizing of Force using Bar plot2
+
+Top 10 Types of Force Used1 in Dallas: Frequency Analysis
+To better understand the types of force used in the city of Dallas,conducting a frequency analysis on the data collected. In this analysis,lets identify the top 10 types of force used1 by law enforcement officers in Dallas, based on the frequency of occurrence. The most common types of force included verbal commands, weapon display at person, holding suspect down, BD-Grabbed, and take down - arm.This only for type of force used1 ,In similar way analysis can be done on remaining types of forces used.
+
+```{r global_options}
+library(knitr)
+d1 = sort(table(Dallas_crimes$TYPE_OF_FORCE_USED1), decreasing = TRUE)[1:5]
+d1 = data.frame(no = c(1, 2, 3, 4, 5), d1)
+d2 = sort(table(Dallas_crimes$TYPE_OF_FORCE_USED1), decreasing = TRUE)[6:10]
+d2 = data.frame(no = c(6, 7, 8, 9, 10), d2)
+kable(list(d1, d2), col.names = c("Rank",
+                           "Force type", "Frequency"), caption = "Top 10 types of force")
+```
+
+
+
+To better understand about forces, lets consider type of force used1 and force used on number of subject gender and race.
+The first chart compares the proportions of force types used on different genders, while the second chart compares the proportions of force types used on different races. The charts are arranged side by side for easy comparison. This analysis aims to provide a better understanding of the relationship between the type of force used and the gender and race of the subjects involved in incidents involving law enforcement officers in Dallas.
+
+#### 3.2.4 Visulizing of Force using Bar plot3
+
+```{r, echo = FALSE, fig.width=16, fig.height=8}
+# Create a bar chart for type of force used on genders
+q8 = ggplot(data=subset(Dallas_crimes, SUBJECT_GENDER!="Unknown" & SUBJECT_GENDER!="NULL" & (TYPE_OF_FORCE_USED1=="Verbal Command" | TYPE_OF_FORCE_USED1=="Weapon display at Person" | TYPE_OF_FORCE_USED1=="Held Suspect Down" | TYPE_OF_FORCE_USED1=="BD - Grabbed" | TYPE_OF_FORCE_USED1=="Take Down - Arm" | TYPE_OF_FORCE_USED1=="Taser")), aes(x = SUBJECT_GENDER, y=10, fill = TYPE_OF_FORCE_USED1)) +
+  # Create a bar chart with identity stat and fill aesthetics
+  geom_bar(stat = "identity", position = "fill") + 
+  # Set y-axis labels as percentage
+  scale_y_continuous(labels = scales::percent) + 
+   # Set x-axis and y-axis labels
+  xlab("Subject gender") + ylab("Proportion") + 
+   # Add a legend with title for fill aesthetics
+  guides(fill=guide_legend(title="Type of force")) + 
+  # Set chart title
+  ggtitle("Type of force used on genders") +  
+  # Set fill colors using Paired color palette
+  scale_fill_brewer(palette = "Paired")  
+
+# Create a bar chart for type of force used on races
+q9 = ggplot(data=subset(Dallas_crimes, SUBJECT_RACE!="NULL" & (TYPE_OF_FORCE_USED1=="Verbal Command" | TYPE_OF_FORCE_USED1=="Weapon display at Person" | TYPE_OF_FORCE_USED1=="Held Suspect Down" | TYPE_OF_FORCE_USED1=="BD - Grabbed" | TYPE_OF_FORCE_USED1=="Take Down - Arm" | TYPE_OF_FORCE_USED1=="Taser")), aes(x = SUBJECT_RACE, y=10, fill = TYPE_OF_FORCE_USED1)) +
+   # Create a bar chart with identity stat and fill aesthetics
+  geom_bar(stat = "identity", position = "fill") + 
+   # Set y-axis labels as percentage
+  scale_y_continuous(labels = scales::percent) + 
+  # Set x-axis and y-axis labels
+  xlab("Subject race") + ylab("Proportion") +  
+   # Add a legend with title for fill aesthetics
+  guides(fill=guide_legend(title="Type of force")) + 
+   # Set x-axis labels for races
+  scale_x_discrete(labels=c("AI", "A", "B", "H", "O", "W")) + 
+  # Set chart title
+  ggtitle("Type of force used on races") +  
+   # Set fill colors using Paired color palette
+  scale_fill_brewer(palette = "Paired") 
+
+# Arrange the two charts side by side in a 1x2 grid
+grid.arrange(q8, q9, ncol = 2, nrow = 1)
+
+
+```
+
+The first plot (q8) shows the proportion of different types of force used on male and female subjects based on gender. From the plot, we can see that for male subjects, the most commonly used type of force is verbal command, followed by weapon display at person, held suspect down, take down arm, and BD-grabbed. Taser is the least commonly used type of force on male subjects. For female subjects, the most commonly used type of force is also verbal command, followed by take down arm, BD-grabbed, and held suspect down. Taser is the least commonly used type of force on female subjects.The second plot (q9) shows the proportion of different types of force used on subjects from different races, including American Indian (AI), Asian (A), Black (B), Hispanic (H), and White (W). From the plot, we can see that for Asian subjects, taser, verbal command, and weapon display at person are almost equally likely to be used. For Black subjects, the most commonly used type of force is verbal command, followed by weapon display at person, and held suspect down. Take down arm, BD-grabbed, and taser are less commonly used on Black subjects. The proportions of different types of force used on Hispanic and White subjects are similar to those used on Black subjects.Insights from the analysis could be:Verbal command is the most commonly used type of force across genders and races. This suggests that law enforcement officers often rely on verbal commands as a means of force in their interactions with subjects.Weapon display at person is also a commonly used type of force, particularly on male subjects and Asian subjects. This suggests that law enforcement officers may use the display of weapons as a means of deterrence or control in certain situations.Take down arm and BD-grabbed are more commonly used on female subjects compared to male subjects. This could indicate that law enforcement officers may rely on physical control techniques more frequently when dealing with female subjects.Taser is the least commonly used type of force across genders and races. This could be due to various factors, such as availability of tasers, training protocols, or officer preferences.The patterns of force used on different racial groups, such as Black, Hispanic, and White subjects, are similar, suggesting that there may not be significant differences in the types of force used based on race.
+
+
+#### 3.2.5 Visulizing using Pie Chart
+
+In this analysis, Lets examine the percentage of offenses committed in different divisions within a city, based on available data.
+
+```{r}
+
+
+# Remove missing values from the SUBJECT_GENDER column in the Dallas_crimes data frame
+filtered_data <- na.omit(Dallas_crimes$DIVISION)
+
+# Create a data frame with the SUBJECT_GENDER column
+qual.data <- data.frame(Dallas_crimes$DIVISION)
+
+# Create a table of frequencies for the SUBJECT_GENDER column
+freq <- table(qual.data)
+
+# Calculate percentages for each category
+percentages <- prop.table(freq) * 100
+
+# Convert percentages to data frame and sort in ascending order
+percentages_df <- data.frame(Division = names(freq), freq, percentage = as.numeric(percentages))
+percentages_df <- percentages_df[order(percentages_df$percentage), ]
+
+# Create a pie chart with proportional section sizes based on percentage values using plotly
+pie_chart <- plot_ly(data = percentages_df, labels = ~Division, values = ~freq, type = "pie",
+                      text = ~paste0(round(percentage, 1), "%"),
+                      textinfo = "label",
+                      hoverinfo = "text",
+                      marker = list(colors = rainbow(length(freq)),
+                                    line = list(color = "white", width = 1),
+                                    sizemode = "diameter",
+                                    sizeref = 0.1 * min(percentages_df$percentage))) %>%
+  layout(title = "Pie Chart of Division Crime Frequencies",
+         showlegend = TRUE,
+         legend = list(orientation = "v",
+                       x = 1,
+                       y = 0.5,
+                       bgcolor = "rgba(0,0,0,0)"))
+
+# Display the interactive pie chart
+pie_chart
+
+```
+
+As shown in above figure, Central division has highest percentage(23.63%) of offenses committed among the listed divisions.It may be worthwhile for the officer to prioritize resources and efforts in this division. This could include increasing patrols, implementing targeted crime prevention programs, and improving community engagement to address the root causes of crime in Central Division.South West, South East, North East, South Central and North Central divisions  are the second highest percentage ranging from(13% to 15.2%) of offenses committed.The officer could consider identifying common patterns or trends in these divisions and implementing strategies to address them. North West has the lowest percentage(8.02%) of offenses.It may still be worth investigating why this division has a relatively lower offense rate. The officer could conduct further analysis to identify any effective crime prevention measures or community engagement initiatives that are contributing to the lower crime rate in this division, and consider replicating these strategies in other divisions. committed among the listed divisions.
+
+
+### 3.3 Visulizing using Histogram
+
+Understanding the distribution of offenses across different divisions is crucial for law enforcement agencies to effectively address crime patterns and allocate resources. In this analysis, we have examined the histogram of offenses in various divisions (D1 to D14) within a city based on available data. 
+
+
+```{r}
+# Load required packages
+library(ggplot2)
+library(plotly)
+
+# Remove missing values from the DIVISION column in the Dallas_crimes data frame
+filtered_data <- na.omit(Dallas_crimes$LOCATION_DISTRICT)
+
+# Create a data frame with the DIVISION column
+qual.data <- data.frame(DISTRICT = Dallas_crimes$LOCATION_DISTRICT)
+
+# Create a histogram with frequency on the y-axis
+histogram <- ggplot(data = qual.data, aes(x = DISTRICT)) +
+  geom_histogram(fill = "red", color = "black", stat = "count", bins = 10) +
+  ggtitle("Histogram of Division Crime Frequencies") +
+  xlab("Division") +
+  ylab("Frequency")
+
+# Convert the histogram to an interactive plot using plotly
+interactive_histogram <- ggplotly(histogram)
+
+# Display the interactive histogram
+interactive_histogram
+```
+
+
+As shown above in histogram,Division D14 and D2 have majority number of offenses around 300.Second most number of offenses were found in division D4,D6,D7 around 220.Third most number of offenses were found in division D8,D11,D10 and D12 around 160. And lowest number of offense was found in division D1,D13,D3,D9 around 100.Based on the histogram provided, it appears that there are different divisions (D1 to D14) with varying numbers of offenses.Division D14 and D2 have the highest number of offenses, with the majority of offenses centered around 300. This indicates that these divisions may have higher crime rates compared to other divisions.The divisions D4, D6, D7 have the second highest number of offenses, with offenses centered around 220. This suggests that these divisions may also have relatively high crime rates, although not as high as D14 and D2.Divisions D8, D11, D10, and D12 have the third highest number of offenses, with offenses centered around 160. This indicates that these divisions may have moderate crime rates compared to other divisions.Divisions D1, D13, D3, and D9 have the lowest number of offenses, with offenses centered around 100. This suggests that these divisions may have relatively lower crime rates compared to other divisions.
+Overall, the histogram provides insights into the distribution of offenses across different divisions. It indicates that D14 and D2 have the highest number of offenses, while D1, D13, D3, and D9 have the lowest number of offenses. The histogram can be used by law enforcement agencies and policymakers to identify divisions with higher crime rates and allocate resources accordingly for crime prevention and reduction strategies. Further analysis, such as examining the underlying factors contributing to the crime rates in different divisions, may be necessary to gain a more comprehensive understanding of the issue.
+
+
+
+
+### 3.4 Visulizing using Box plot
+
+The box plot analysis presented below provides insights into the crime rates among different racial groups, namely black people, Hispanics, and white people. The findings reveal distinct patterns in crime rates by month for each racial group, with peaks observed in certain months and lower crime rates in others. Additionally, the presence of outliers in some plots suggests potential unusual occurrences or extreme values. Understanding these patterns and outliers can help law enforcement agencies and policymakers in developing targeted strategies to address crime disparities among different racial groups.
+
+```{r}
+Dallas_crimes  %>%
+  filter(SUBJECT_RACE == "Black"  | SUBJECT_RACE == "White" | SUBJECT_RACE == "Hispanic" ) %>%
+  group_by(INCIDENT_DATE,Col_month_digit,SUBJECT_RACE) %>%
+  summarize(avg =n()) -> df_dateh
+
+
+g3 <- ggplot(df_dateh , aes(x = (Col_month_digit), y= avg, fill = Col_month_digit)) +
+
+  geom_boxplot() +
+  labs(x= 'months',y = 'Incident Rate',
+       title = paste("Central Tendency of", ' Incident rate across SUBJECT RACE ')) +
+  # theme_bw() +
+  theme(legend.position="none") + facet_wrap(~SUBJECT_RACE)  +
+  coord_cartesian(ylim = c(1, 12))
+g3
+```
+
+As shown in above box plot, First plot is plotted by filtering black people, its quite evident that black people are committing more number of crimes.Peaks are observed especially in the month of march followed by February. Low range crimes were observed in the month of July and October.And there are only two outliers.Second plot, Hispanics also commited more number of crimes in the month march when compared to other months.Second highest was found in month January.Lowest number of crimes were observed in the month of June and October.The third plot,White people committed highest number of crime in September and lowest in June.And second plot and third plot have more outliers.Seasonal variations: The box plots show that crime rates vary by month, with peaks in March and February for black people and Hispanics, and peaks in September for white people. Lower crime rates are observed in months like July, October, and June for different racial groups. This suggests that there may be seasonal variations in crime rates, which could be influenced by factors such as weather, holidays, or social and economic factors. Outliers: The presence of outliers in the second and third plots may indicate unusual occurrences or extreme values that deviate from the typical pattern. Further investigation may be needed to understand the reasons behind these outliers and whether they represent unique events or trends.
+
+
+
+
+### 3.6 Visulizing using Scatter Plot1
+
+Using the plotly library in R to create an interactive scatter plot with a trendline using linear regression. The plot is based on data from the "Dallas_month" data frame, with the "count" variable plotted on the x-axis and the "Col_month_digit" variable plotted on the y-axis. The plot type is set to "scatter" with markers.
+
+The code then adds a trendline to the plot using the add_lines() function, which calculates the predicted values from a linear regression model using the lm() function with "Col_month_digit" as the dependent variable and "count" as the independent variable. The trendline is colored in red.
+
+
+```{r}
+library(plotly)
+
+# Create a scatter plot with plotly
+plot <- plot_ly(data = Dallas_month, x = ~count, y = ~Col_month_digit, type = "scatter", mode = "markers")
+
+# Add a trendline using linear regression
+plot <- plot %>% add_markers() %>% add_lines(x = ~count, y = ~predict(lm(Col_month_digit ~ count, data = Dallas_month)), color = "red")
+
+# Customize plot appearance
+plot <- plot %>% layout(title = "Monthly Crime Count vs. Month", xaxis = list(title = "Crime Count"), yaxis = list(title = "Month"))
+
+# Show the interactive plot
+plot
+
+```
+
+A negative linear association between the month and the number of offences per month may be seen in the scatter plot with the trend line. The trend line, which is fitted with linear regression, has a downward slope, showing that the number of offences tends to decline as the month progresses.This pattern raises the possibility that there are seasonal or temporal patterns in the frequency of crimes. For instance, the fact that there were more offences in January (232) than in May (219) or December (100) may be a sign that offences are more common in the winter and decline as the year draws to a close.The negative linear relationship between the month and offense count could be attributed to various factors, such as changes in weather conditions, holidays or events affecting criminal activities, or shifts in policing strategies.
+
+### Visulizing using Scatter Plot2
+
+```{r}
+library(plotly)
+
+# Create a scatter plot with plotly
+plot <- plot_ly(data = Dallas_day, x = ~count, y = ~Col_hour, type = "scatter", mode = "markers")
+
+# Add a trendline using linear regression
+plot <- plot %>% add_markers() %>% add_lines(x = ~count, y = ~predict(lm(Col_hour ~ count, data = Dallas_day)), color = "red")
+
+# Customize plot appearance
+plot <- plot %>% layout(title = "Hourly Crime Count vs. Hour of Day", xaxis = list(title = "Crime Count"), yaxis = list(title = "Hour of Day"))
+
+# Show the interactive plot
+plot
+
+```
+
+
+
+
+Based on the scatter plot with the trendline, it appears that there is a positive linear association between the hour of the day and the number of offenses per month. The trendline, which is fitted using linear regression, shows an upward slope, indicating that as the hour of the day increases, the count of offenses tends to increase as well.Specifically, the scatter plot shows that around 3 crimes occur at 9:00 am, 11 crimes at 11:00 am, 17 crimes at 17:00 (5:00 pm), 22 crimes at 19:00 (7:00 pm), and 34 crimes at 21:00 (9:00 pm). These counts suggest that the highest number of crimes occur during the evening and nighttime hours, with a peak observed between 15:00 (3:00 pm) to 24:00 (12:00 am).On the other hand, the scatter plot also indicates that there are fewer crimes occurring during the early morning hours, specifically between 6:00 am to 10:00 am. This could be due to various factors, such as increased visibility during daylight hours, higher police presence during daytime, or lower human activity levels during the early morning hours.
+
+
+
+## 4. Visual Representation using Co-relation Analysis
+
+
+```{r }
+library(corrplot)
+Dalla_factor <- as.data.frame(lapply(Dallas_crimes, as.factor), stringsAsFactors = TRUE)
+
+Dalla_numeric <- as.data.frame(lapply(Dalla_factor, as.numeric), stringsAsFactors = TRUE)
+
+#Co-relation between type of force
+cont_vars <- Dalla_numeric%>%select(c(35,38,39,40,42,43,46,47))
+#cor() calculates correlation coefficient btw each pair
+#pairwise.complete.obs tells to exclude missing values
+cormat <- round(x = cor(cont_vars,use="pairwise.complete.obs"), digits = 2)
+corrplot(cormat,type = "lower" , method="number")
+
+
+
+```
+
+As shown in above plot, it can be observed that there is a positive correlation(0.87) between type_of_force_used3 and type_of_force_used8. It may indicate that when type_of_force_used3 was used on subject , there is more chance that even type_of_force_used8 will be used.There is a negative correlation(-0.97) between type_of_force_used8 and type_of_force_used4.It may indicate that when type_of_force_used8 was used on subject , there is less chance that even type_of_force_used4 will be used.There is a positive correlation(0.73) between type_of_force_used8 and type_of_force_used5. It may indicate that when type_of_force_used5 was used on subject , there is more chance that even type_of_force_used8 will be used.There is a negative correlation(-0.51) between type_of_force_used8 and Force_effective.It may indicate that when type_of_force_used8 was used on subject , the force was not that effective.
+
+
+
+
+
+
+## 5. Visual Representation using Time-series Analysis
+
+
+The Time series plots provide visual representations of the trends and distributions of incident counts over different time periods in Dallas.Plot1 shows the trend of incident count over the year 2016.Incident_date is mapped to x-axis and count to y-axis. The smoothing loess line is used to help with visualising trends in plot.Plot2 shows the trend of incident count over the months in year 2016.Plot3 shows the trend of incident count over the hours in a day.Plot4 shows the trend of count using density plot ,distribution of count.
+
+```{r}
+library(lubridate)
+library(ggplot2)
+#geom_line() adds a line layer of size 0.5 with grey color
+#geom_smooth() adds a smooth line with red color and span of 1/5.
+#theme_bw() sets the plot to black and white theme.
+TS_plot1 <- ggplot(data = Dallas_year, aes(INCIDENT_DATE, count)) +   geom_line(size=0.5, col="gray") +
+  geom_smooth(method = "loess", color = "red", span = 1/5) + theme_bw() + labs(x="Months ", y= "INCIDENT COUNTS", title="5.1 Year vs Incidents")
+
+#group=1 indicates both lines must be treated as single group,hence connected by single line
+#geom_line() creates a line with size of 1 and a color of "steelblue"
+TS_plot2 <- ggplot(Dallas_month, aes(x=Col_month_digit, y =count, group=1)) + geom_line( size = 1,colour ="steelblue") + labs(x="MONTHS OF 2016", y= "INCIDENT COUNTS", title="5.2 Months vs  Incident Rates")  + theme_bw()
+
+#group=count indicates all data points must be treated as single group,hence connected by single line
+#geom_line() creates a line with size of 1 and a color of "orange"
+TS_plot3 <- ggplot(Dallas_hour, aes(x = Col_hour, y = avg, group = "count")) + geom_line( size = 1, colour = "orange") + labs(x="HOURS IN A DAY", y= "INCIDENT COUNTS", title="5.3 Hours vs  Incident Rates")+ theme_bw()  +
+   labs(x = "Hour of the day", y = "count") + theme_bw()
+
+#geom_density() adds a density layer with transparency level of density 0.5 with black border
+TS_plot4 <- ggplot(Dallas_year, aes(count)) +
+  geom_density(alpha = 0.5, colour = "black", fill ="blue")+ labs(x="Incident counts", y= "Density", title="1.d Distribuion of incident rates") + theme_bw()
+```
+```{r}
+TS_plot1
+```
+
+It can be observed from above plot that , Incident count increased with January and slowly decreased at April.And also there were only minute changes in slope from April to July. Later after July ,it gradually decreased and suddenly increased at August. After October there was decreasing in count.Overall we can see count was more in beginning and gradually became less at the end after July.
+
+```{r}
+TS_plot2
+```
+
+It can be observed from above plot that, Highest number of incident happend at month of march(264) followed by February with 254 counts.Lowest Number of incidents were reported in December with 97 incidents.It can also be seen that there are two peaks.First peak gradualy decreases from march, Second slope starts at July and reaches peak at September.Later gradually decreases.
+
+```{r}
+TS_plot3
+```
+
+It can be observed from above plot that , Highest number of incidents were during 17:00(179) and 20:00(181) followed by 02:00(152) and.Lowest was at range of 04:00 to 10:00 in the morning. There are three lower peaks at 10:00 , 13:00 and 23:00.
+Overall it is found that, during timings 17:00,20:00,02:00,10:00,13:00 and 23:00 most incidents occurred with peaks.And also most incidents occurred in the evening compared to morning.
+
+```{r}
+TS_plot4
+```
+
+Above plot shows overall distribution of counts of crime. It can been seen that, there is a right skewness in the incident count across the year.Incidents more than 20 per day are less obvious to occur and There is a peak of distribution around 2 to 4 incidents per day.
+
+
+## 6. Visual Representation using Map
+
+Data set is grouped by LOCATION_LONGITUDE,LOCATION_LATITUDE,each occurrences in each group is calculated using count().The resulting data frame is sorted in descending order of counts(n) and any rows with missing values are dropped using drop_na().Late dataframe is renamed to "longitude","latitude","n" using names().crimes is filtered to include rows where the count is greater than 10.crimes_gt_10 is used to create a leaflet map using the leaflet() function.The map is centered at longitude -96.8 and latitude 32.8 with an initial zoom level of 11, as specified by the setView(). The addTiles() function adds the default OpenStreetMap tiles as the base map layer.The addCircleMarkers() function is used to add circular markers on the map for each data point in the crimes_gt_10 data frame. The popup argument specifies the content of the popup when a marker is clicked, which is set to display the count (n) of crimes for each data point. The label argument specifies the label to be displayed on each marker, which is set to display the count (n) as well. The labelOptions argument is used to customize the appearance of the labels, such as hiding the labels on marker hover, displaying only text, and positioning the labels on top of the markers.
+
+
+```{r}
+library(rgdal)
+library(ggplot2)
+library(Rcpp)
+library(sf)
+library(tidyverse)
+library(ggmap)
+library(leaflet)
+
+crimes <- Dallas_crimes %>%
+  group_by(LOCATION_LONGITUDE, LOCATION_LATITUDE) %>%
+  count() %>%
+  arrange(desc(n)) %>%
+  drop_na()
+
+# Renaming long column names
+names(crimes) <- c('x', 'y', 'n')
+
+# Considering only instances of crimes more than 2
+crimes_gt_2 <- crimes[crimes$n > 4, ]
+
+# Renaming columns
+names(crimes_gt_2) <- c("longitude", "latitude", "n")
+
+# Create leaflet map with interactive markers
+leaflet() %>%
+  addTiles() %>%
+  setView(-96.8, 32.8, zoom = 11) %>%
+  addCircleMarkers(
+    data = crimes_gt_2,
+    popup = ~paste0("Count = ", n),
+    label = ~paste0("Count = ", n),
+    labelOptions = labelOptions(noHide = TRUE, textOnly = TRUE, direction = "top", offset = c(0, -9)),
+    fillOpacity = 0.7,
+    color = "red",
+    stroke = FALSE,
+    radius = ~sqrt(n) * 3
+  ) %>%
+  addLegend(
+    "bottomright",
+    title = "Crime Count",
+    pal = colorNumeric(palette = "Reds", domain = crimes_gt_2$n),
+    values = crimes_gt_2$n
+  )
+
+```
+
+The map, created using the leaflet package in R, displays markers on a map of Dallas, with each marker representing a street where crimes have been reported.The size of the markers is proportional to the square root of the crime count, with larger markers indicating higher crime counts.The markers are color-coded based on the crime count, with darker shades of red indicating higher crime counts.As viewers explore the map, they notice that certain areas of Dallas have a higher concentration of crime. One such area is the commerce street(47), specifically around Walnut street with 16 ,Chestnut Street with 12 crimes. The markers in this area are larger and darker in color, indicating a higher number of reported crimes.
+Another interesting observation is the cluster of markers in the downtown area, specifically around the West End Historic District neighborhood. The markers in this area are also relatively large and dark in color, suggesting a significant number of reported crimes in this vibrant entertainment district known for its nightlife and music scene.On the other hand, some areas of Dallas show lower crime counts, as evident from the smaller and lighter-colored markers.These areas include the northern suburbs, such as Plano and Frisco, which are known for their relatively low crime rates and family-friendly environments.The interactive map provides valuable insights into the distribution of crimes in Dallas, revealing areas with higher crime counts and potential hot-spots that may require increased attention from law enforcement agencies. The findings highlight the need for targeted crime prevention strategies and community engagement efforts in areas with higher crime rates. The map serves as a powerful tool for visualizing complex crime data and can aid policymakers, law enforcement agencies, and community organizations in making informed decisions to address crime issues in Dallas.
+
+
+## 7. RESULT
+
+The Results of the study on the policing dataset from Dallas, Texas in 2016 using the Center for Policing Equality's research methodology reveal several key findings. The dataset, which consists of 2383 observations with 47 variables, is thoroughly analyzed to identify areas where racial disparities persist beyond what can be explained by crime and poverty levels.The first step in the analysis is data cleaning, where the dataset is carefully reviewed and cleaned to ensure accuracy and reliability. Next, the data is converted into the right format for analysis. Data exploration is then conducted, utilizing various visualization techniques to gain insights from the data. Plots, such as bar charts, scatter plots, and heat maps, are drawn to visually represent the data and identify patterns and trends.The analysis of the plots uncovers several important insights. For example, it may reveal disproportionate rates of arrests or use of force against certain racial or ethnic groups, even when crime and poverty levels are taken into account. It may also highlight disparities in the treatment of different communities by the police, such as disparities in stops, searches, or arrests.Based on the insights gained from the visualizations, conclusions are drawn to tell a compelling story. The findings may shed light on areas where racial disparities persist in policing practices, providing evidence for potential bias or discrimination. 
+
+## 8. REFERENCES
+
+Title: Data Science for Good: Center for Policing Equity
+Source: Kaggle
+Available at: https://www.kaggle.com/center-for-policing-equity/data-science-for-good
+
+
